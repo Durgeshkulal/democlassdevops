@@ -1,0 +1,51 @@
+- name: make sure cache directory exists
+  file: path="{{ inventory_dir }}/cache" state=directory
+  delegate_to: localhost
+
+- name: generate network templates
+  template: src=network.j2 dest="{{ inventory_dir }}/cache/{{ inventory_hostname }}.network"
+  delegate_to: localhost
+
+- name: copy generated files to vm
+  vmware_guest_file_operation:
+    hostname: "{{ vmware_general.hostname }}"
+    username: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    datacenter: "{{ vmware_general.datacenter }}"
+    validate_certs: "{{ vmware_general.validate_certs }}"
+    vm_id: "{{ inventory_hostname }}"
+    vm_username: root
+    vm_password: "{{ template_password }}"
+    copy:
+        src: "{{ inventory_dir }}/cache/{{ inventory_hostname }}.network"
+        dest: "/etc/systemd/network/ens160.network"
+        overwrite: False
+  delegate_to: localhost
+
+- name: restart systemd-networkd
+  vmware_vm_shell:
+    hostname: "{{ vmware_general.hostname }}"
+    username: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    datacenter: "{{ vmware_general.datacenter }}"
+    folder: /vm
+    vm_id: "{{ inventory_hostname}}"
+    vm_username: root
+    vm_password: "{{ template_password }}"
+    vm_shell: /bin/systemctl
+    vm_shell_args: " restart systemd-networkd"
+  delegate_to: localhost
+
+- name: restart systemd-resolved
+  vmware_vm_shell:
+    hostname: "{{ vmware_general.hostname }}"
+    username: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    datacenter: "{{ vmware_general.datacenter }}"
+    folder: /vm
+    vm_id: "{{ inventory_hostname}}"
+    vm_username: root
+    vm_password: "{{ template_password }}"
+    vm_shell: /bin/systemctl
+    vm_shell_args: " restart systemd-resolved"
+  delegate_to: localhost
